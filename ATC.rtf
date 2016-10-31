@@ -1,0 +1,672 @@
+{\rtf1\ansi\ansicpg1252\cocoartf1504\cocoasubrtf600
+{\fonttbl\f0\froman\fcharset0 Times-Roman;}
+{\colortbl;\red255\green255\blue255;}
+{\*\expandedcolortbl;\csgray\c100000;}
+\margl1440\margr1440\vieww10800\viewh8400\viewkind0
+\deftab720
+\pard\pardeftab720\pardirnatural\partightenfactor0
+
+\f0\fs24 \cf0 // include the library code:\
+#include <LiquidCrystal.h>\
+\
+LiquidCrystal lcd(12, 11, 5, 4, 3, 2);  // initialize the library with the numbers of the interface pins\
+\
+int sensorval; // Pressure from sensor\
+int setpressureval; // Set pressure from potentiometer\
+int lowaltval=1000; // Value for low altitude\
+int sensoralt; // Altitude from sensor\
+int pressurealt; // Set altitude from potentiometer\
+int highaltlim_1=0; // First potentiometer reading for Menu 2 timer\
+int highaltlim_2; // Second potentiometer reading for Menu 2 timer\
+int lowalt=0; // Set low altitude (Sea Level)\
+int cState=0; // Current state of the machine\
+int cnt = 0;\
+int pressurealtreading;\
+int cyclecount=0; // Number of completed cycles\
+long testmillis=0; // Test timer\
+long oldmillis=0; // State timer\
+long printmillis=0; // Display timer\
+long menu2millis=0; // Menu 2 timer\
+long cstate2millis=0; // cState = 2 timer\
+long solenoidmillis=0;\
+int debounce=250; // Debounce time\
+int onoffdebounce=2000; // On/Off switch debounce time\
+long onoffbouncemillis=0; // On/Off switch debounce timer\
+long menubouncemillis=0; // Menu button debounce timer\
+long plusbouncemillis=0; // Plus button debounce timer\
+long minusbouncemillis=0; // Minus button debounce timer\
+int refreshrate=100; // Display refresh rate\
+int screenhold=3000; // Hold time for each display screen\
+int readingscreen;\
+int menuscreen;\
+unsigned int cyclenumber; // Set number of cycles\
+unsigned long lowalthold; // Time at low altitude\
+unsigned long highalthold; // Time at high altitude\
+int pin_menu = 30;\
+int pin_plus = 34;\
+int pin_minus = 32;\
+int pin_start = 42;\
+int pin_pump = 40;\
+int pin_solenoid = 41;\
+int pin_onoffled = 49;\
+int unused = 33; // Unused pin DO NOT CONNECT ANYTHING TO THIS PIN\
+\
+int lookuppressure[] = \{106, 101, 97, 95, 92, 91, 89, 87, 86, 85, 84, 83, 82, 81, 80, 79, 78, 78, 77, 76, 76, 75, 75, 74, 73, 73, 72, 72, 71, 71, 70, 70, 69, 69, 69, 68, 68, 67, 67, 67, 66, 66, 66, 65, 65, 65, 64, 64, 64, 63, 63, 63, 62, 62, 62, 61, 61, 61, 61, 60, 60, 60, 60, 59, 59, 59, 59, 58, 58, 58, 58, 57, 57, 57, 57, 56, 56, 56, 56, 56, 55, 55, 55, 55, 55, 54, 54, 54, 54, 54, 53, 53, 53, 53, 53, 52, 52, 52, 52, 52, 51, 51, 51, 51, 51, 51, 50, 50, 50, 50, 50, 50, 49, 49, 49, 49, 49, 49, 48, 48, 48, 48, 48, 48, 48, 47, 47, 47, 47, 47, 47, 47, 46, 46, 46, 46, 46, 46, 46, 45, 45, 45, 45, 45, 45, 45, 45, 44, 44, 44, 44, 44, 44, 44, 44, 43, 43, 43, 43, 43, 43, 43, 43, 42, 42, 42, 42, 42, 42, 42, 42, 41, 41, 41, 41, 41, 41, 41, 41, 41, 40, 40, 40, 40, 40, 40, 40, 40, 40, 39, 39, 39, 39, 39, 39, 39, 39, 39, 39, 38, 38, 38, 38, 38, 38, 38, 38, 38, 38, 37, 37, 37, 37, 37, 37, 37, 37, 37, 37, 36, 36, 36, 36, 36, 36, 36, 36, 36, 36, 36, 35, 35, 35, 35, 35, 35, 35, 35, 35, 35, 35, 34, 34, 34, 34, 34, 34, 34, 34, 34, 34, 34, 34, 33, 33, 33, 33, 33, 33, 33, 33, 33, 33, 33, 33, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 31, 31, 31, 31, 31, 31, 31, 31, 31, 31, 31, 31, 31, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 26, 26, 26, 26, 26, 26, 26, 26, 26, 26, 26, 26, 26, 26, 26, 26, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 21, 21, 21, 21, 21, 21, 21, 21, 21, 21, 21, 21, 21, 21, 21, 21, 21, 21, 21, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1, -1, -1, \};\
+\
+void setup()\
+  // put your setup code here, to run once:\
+  \{\
+  Serial.begin(9600);\
+  pinMode(pin_pump, OUTPUT); // Pump\
+  pinMode(pin_solenoid, OUTPUT); // Air Solenoid\
+  pinMode(pin_start, INPUT); // Start Switch\
+  pinMode(pin_onoffled, OUTPUT); // LED\
+  pinMode(pin_menu, INPUT); // Menu Button\
+  pinMode(pin_plus, INPUT); // Plus Button\
+  pinMode(pin_minus, INPUT); // Minus Button\
+  digitalWrite(pin_pump, HIGH); //Pump off\
+  digitalWrite(pin_solenoid, HIGH); // Air Solenoid Off\
+  digitalWrite(pin_onoffled, LOW); // On/Off LED off\
+  lcd.begin(16, 2); // LCD\
+  readingscreen=1; // Initialize first display screen\
+  cyclenumber=3; // Set number of total cycles\
+  lowalthold=1800000; // Initialize time at low altitude at 30 minutes\
+  highalthold=1800000; // Initialize time at high altitude at 30 minutes\
+  menuscreen=0; // Initialize menu as closed\
+  \}\
+\
+void loop() \{\
+ cnt++;\
+ sensorval = analogRead(A0); // Gets value from pressure sensor\
+ setpressureval= analogRead(A1);  // Gets value from potentiometer\
+ pressurealt= lookuppressure[setpressureval];\
+ sensoralt = lookuppressure[sensorval];\
+ lowalt = lookuppressure[lowaltval];     \
+\
+if (cState != 0)\
+  \{\
+  if (digitalRead(pin_start) == HIGH) // On/Off switch is pressed\
+    \{\
+    if (millis() >= onoffbouncemillis + onoffdebounce)\
+      \{\
+      cState = 0; // Return to standby mode\
+      onoffbouncemillis = millis(); // Sets On/Off switch debounce timer\
+      testmillis = millis(); // Resets test timer\
+      digitalWrite(pin_solenoid, HIGH); // Solenoid closed\
+      digitalWrite(pin_pump, HIGH); // Pump off\
+      \}\
+    \}\
+  \}\
+    \
+if (cState == 0)\
+  \{\
+  digitalWrite(pin_onoffled, HIGH);  // LED is off while in Standby Mode\
+  \}\
+else\
+  \{\
+  digitalWrite(pin_onoffled, LOW);  // LED is on during test\
+  \}\
+  \
+if ((cyclecount >= cyclenumber) && (cyclenumber != 0)) // All cycles are completed\
+  \{\
+  cState = 0; // Return to standby mode\
+  \}\
+else\
+  \{\
+  if (cState == 0) // Machine Ready/Standby Mode\
+    \{\
+    if (digitalRead(pin_solenoid) == HIGH); // Solenoid on\
+      \{\
+      if (millis() - solenoidmillis >= 10000) // 10 second delay\
+        \{\
+        digitalWrite(pin_solenoid, LOW); // Solenoid off\
+        solenoidmillis = millis();\
+        \}\
+      \}\
+    if (digitalRead(pin_solenoid) == LOW); // Solenoid off\
+      \{\
+      if (millis() - solenoidmillis >= 10000) // 10 second delay\
+        \{\
+        digitalWrite(pin_solenoid, HIGH); // Solenoid on\
+        solenoidmillis = millis();\
+        \}\
+      \}      \
+    \
+    if (digitalRead(pin_start) == HIGH) // Start switch is pressed\
+      \{\
+      if (millis() >= onoffbouncemillis + onoffdebounce)\
+        \{\
+        cState = 1; // Current state of machine is now 1\
+        onoffbouncemillis = millis(); // Sets On/Off switch debounce timer\
+        testmillis = millis(); // Sets timer for test\
+        \}\
+      \}\
+    \}\
+    \
+  if (cState == 1)// Increase Altitude Mode \
+     \{\
+       if (sensorval > setpressureval) // Altitude inside chamber is lower than set altitude; pressure is too high\
+          \{\
+           digitalWrite(pin_pump, LOW); // Pump on  \
+           digitalWrite(pin_solenoid, HIGH); // Solenoid closed           \
+          \}\
+        if (sensorval < setpressureval-2) // Altitude inside chamber is higher than set altitude\
+          \{\
+            cState = 2; // Current state of machine is now 2\
+            oldmillis = millis(); // State timer is now reset\
+            cstate2millis = millis(); // Sets timer for cState == 2\
+          \}\
+     \}\
+  \
+   if (cState == 2) // Maintain Altitude Mode  \
+     \{\
+        if (sensorval > setpressureval+10) // Altitude drops below target; pressure is too high\
+          \{\
+          if (millis() >= cstate2millis + 10000) // 10 seconds have passed\
+            \{\
+            // Lower pressure:          \
+            digitalWrite(pin_pump, LOW); // Pump On\
+            digitalWrite(pin_solenoid, HIGH); // Solenoid closed\
+            \}\
+          \}\
+        if (sensorval <= setpressureval-4) // Altitude above target/pressure too low\
+          \{\
+            digitalWrite(pin_pump, HIGH); // Pump Off\
+            digitalWrite(pin_solenoid, HIGH); // Solenoid closed\
+            cstate2millis = millis(); // Resets timer                \
+          \}\
+       if ((millis() >= oldmillis +highalthold) && (highalthold != 0)) // High altitude hold time has passed\
+         \{\
+           cState = 3;\
+           oldmillis = millis(); // State timer is reset   \
+         \}  \
+     \} \
+  \
+  if (cState == 3)//Decrease Altitude Mode   \
+    \{\
+    if (sensoralt > lowalt) // Real time altitude is higher than low altitude\
+     \{\
+     digitalWrite(pin_pump, HIGH); // Pump off\
+     digitalWrite(pin_solenoid, LOW);  // Solenoid open\
+     \}\
+    if (sensoralt <= lowalt) // Low altitude is reached\
+       \{\
+         cState = 4;\
+         oldmillis = millis();  // State timer is reset\
+         digitalWrite(pin_solenoid, HIGH);  // Solenoid is closed\
+       \}  \
+    \}\
+  \
+  if (cState ==4)// Hold at Low Altitude\
+    \{\
+      digitalWrite(pin_pump, HIGH); // Pump off\
+      digitalWrite(pin_solenoid, HIGH);  // Solenoid closed\
+      if ((millis() >= oldmillis +lowalthold) && (lowalthold != 0))  // Low altitude hold time has passed\
+       \{\
+         cState = 1;\
+         cyclecount++;  // Cycle has completed\
+         oldmillis = millis();  // State timer is reset\
+         digitalWrite(pin_solenoid, HIGH);  // Solenoid closed\
+       \}\
+    \}\
+    \
+  if (millis() <= menubouncemillis + debounce) // Before debounce time ends\
+    \{\
+    pin_menu = unused; // Menu changed to wrong pin\
+    \}   \
+  else\
+    \{\
+    pin_menu = 30; // Correct menu pin\
+    if (digitalRead(pin_menu) == LOW) // Menu button is engaged\
+      \{\
+      if (menuscreen == 4) // Last menu screen\
+        \{\
+        menuscreen = 0; // Exits menu\
+        \}\
+      else\
+        \{\
+        menuscreen++; // Opens menu or goes to next menu screen\
+        \}\
+      menubouncemillis = millis(); // Resets menu debounce timer\
+      printmillis = menubouncemillis; // Resets display timer\
+      \}\
+    \} \
+    \
+  if (cnt == 1)\
+      \{\
+      printmillis = millis(); // Sets timer for first reading\
+      \}\
+      \
+  if (millis()%refreshrate == 0) // Only prints every x seconds\
+    \{\
+    if (menuscreen == 0) // Menu is closed\
+      \{\
+      // Reading 1: Target and Measured Altitudes\
+      if (readingscreen == 1) \
+        \{\
+        lcd.setCursor(0,1); \
+        lcd.print("Measured Alt: ");\
+        lcd.print(sensoralt);\
+        lcd.print("                 ");\
+        if (cState == 0 || cState == 1 || cState == 2)\
+          \{\
+          if (cnt == 1)\
+            \{ \
+            lcd.setCursor(0,0); \
+            lcd.print("Target Alt: ");\
+            lcd.print(pressurealt);\
+            lcd.print("            ");\
+            \}\
+          else\
+            \{\
+            lcd.setCursor(0,0); \
+            lcd.print("Target Alt: ");\
+            lcd.print(pressurealtreading);\
+            lcd.print("            ");\
+            \}\
+          \}\
+        else // cState == 3 || cState == 4\
+          \{\
+          lcd.setCursor(0,0); \
+          lcd.print("Target Alt: ");\
+          lcd.print(lowalt);\
+          lcd.print("            ");\
+          \}\
+        \}\
+        \
+      // Reading 2: Timer and Cycle Count\
+      if (readingscreen == 2)\
+        \{\
+        // Defining integers for timer\
+        unsigned long minutes = (millis() - testmillis)/ 60000;\
+        unsigned long seconds = ((millis() - testmillis)%60000) / 1000;\
+        // Cycle timer as minutes:seconds\
+        lcd.setCursor(0,0);\
+        lcd.print("Time: ");\
+          if (cState == 0)\
+            \{\
+            lcd.print("--      ");\
+            \}\
+          else\
+            \{\
+            lcd.print(minutes);  \
+            lcd.print(":");\
+            lcd.print(seconds);\
+            lcd.print("             ");\
+            \}\
+        // Cycle Count (number of cycles completed)\
+        lcd.setCursor(0,1);\
+        lcd.print("Cycle Cnt: ");\
+        lcd.print(cyclecount); \
+        lcd.print("          ");\
+        \}\
+        \
+      // Reading 3: Mode   \
+      if (readingscreen == 3)\
+        \{\
+        lcd.setCursor(0,0);\
+        lcd.print("State: ");      \
+        if (cState == 0)\
+          \{\
+          lcd.print("Standby         ");\
+          lcd.setCursor(0,1);\
+          lcd.print("                  ");\
+          \}   \
+        if (cState == 1)\
+          \{\
+          lcd.print("             ");\
+          lcd.setCursor(0,1);\
+          lcd.print("Increasing Alt");\
+          lcd.print("          ");\
+          \}\
+        if (cState == 2)\
+          \{\
+          lcd.print("Maintain ");\
+          lcd.setCursor(0,1);\
+          lcd.print("High Alt");\
+          lcd.print("                     ");\
+          \}\
+        if (cState == 3)\
+          \{\
+          lcd.print("          ");\
+          lcd.setCursor(0,1);\
+          lcd.print("Decreasing Alt");\
+          lcd.print("          ");\
+          \}\
+        if (cState == 4)\
+          \{\
+          lcd.print("Maintain        ");\
+          lcd.setCursor(0,1);\
+          lcd.print("Low Alt");\
+          lcd.print("                     ");\
+          \}\
+        \}\
+      \}   \
+      \
+    // Menu 1: Number of Cycles  \
+    if (menuscreen == 1)  \
+      \{\
+      if (cyclenumber == 0)\
+        \{\
+        lcd.setCursor(0,0);  \
+        lcd.print("# of Cycles: "); \
+        lcd.print("                "); \
+        lcd.setCursor(0,1);\
+        lcd.print("Infinite");\
+        lcd.print("                "); // Print "infinite" number of cycles\
+        \}\
+      else\
+        \{\
+        lcd.setCursor(0,0);\
+        lcd.print("# of Cycles: ");\
+        lcd.print(cyclenumber); \
+        lcd.print("                "); \
+        lcd.setCursor(0,1);\
+        lcd.print("                "); // Print current number of cycles\
+        \}\
+  \
+       if (digitalRead(pin_plus) == LOW) // Plus button is engaged\
+          \{\
+          if (millis() <= plusbouncemillis + debounce) // Before debounce time complete\
+            \{\
+            pin_plus =unused; // Plus changed to wrong pin\
+            \}\
+          else\
+            \{\
+            pin_plus = 32; // Correct plus pin\
+            if (cyclenumber == 99)\
+              \{\
+              cyclenumber = 0;\
+              \}\
+            else\
+              \{\
+              cyclenumber++; // Increase number of cycles by 1\
+              \}\
+            plusbouncemillis = millis(); // Reset plus button debounce timer\
+            printmillis = millis(); // Reset display timer  \
+            \}\
+         \}\
+       if (digitalRead(pin_minus) == LOW) // Minus button is engaged\
+          \{\
+          if (millis() <= minusbouncemillis + debounce) // Before debounce time complete\
+            \{\
+            pin_minus = unused; // Minus changed to wrong pin\
+            \}\
+          else\
+            \{\
+            pin_minus = 34; // Correct minus pin\
+            if (cyclenumber == 0)\
+              \{\
+              cyclenumber = 99;\
+              \}\
+            else\
+              \{\
+              cyclenumber--; // Increase number of cycles by 1\
+              \}   \
+            minusbouncemillis = millis(); // Reset minus button debounce timer\
+            printmillis = millis(); // Reset display timer\
+           \}\
+          \}\
+      \}\
+    // Menu 2: High Altitude Limit\
+    if (menuscreen == 2)\
+        \{\
+        lcd.setCursor(0,0);\
+        lcd.print("High Alt Lim: ");\
+        lcd.print(pressurealt); \
+        lcd.print("                "); \
+        lcd.setCursor(0,1);\
+        lcd.print("                "); // Print current high altitude limit\
+        if (millis() - menu2millis >= 1000)\
+          \{\
+          highaltlim_2 = pressurealt; // Define second value for timer\
+          if (highaltlim_2 - highaltlim_1 >= 3) // Altitude increases by at least 3\
+            \{\
+            menu2millis = millis(); // Reset Menu 2 timer\
+            printmillis = millis(); // Reset display timer\
+            highaltlim_1 = pressurealt; // Resets first value for potentiometer\
+            \}\
+          else if (highaltlim_1 - highaltlim_2 >= 3) // Altitude decreases by at least 3\
+            \{\
+            menu2millis = millis(); // Reset Menu 2 timer\
+            printmillis = millis(); // Reset display timer\
+            highaltlim_1 = pressurealt; // Resets first value for potentiometer\
+            \}\
+          \}\
+        \}\
+        \
+    // Menu 3: High Altitude Hold Time\
+    if (menuscreen == 3)\
+        \{\
+        lcd.setCursor(0,0);\
+        lcd.print("High Alt Time:                 ");\
+        lcd.setCursor(0,1);\
+      if (highalthold != 0)\
+        \{\
+        lcd.print(highalthold/3600000); // Hours\
+        lcd.print(":");\
+        lcd.print((highalthold%3600000)/60000); // Minutes\
+        lcd.print(":");\
+        lcd.print((highalthold%60000)/1000); // Seconds \
+        lcd.print("    ");\
+        \}\
+      else //(highalthold = 0)\
+        \{\
+        lcd.print("Infinite");\
+        \}\
+        \
+      if (digitalRead(pin_plus) == LOW) // Plus button is engaged\
+          \{\
+          if (millis() <= plusbouncemillis + debounce) // Before debounce time complete\
+            \{\
+              pin_plus = unused; // Plus changed to unused pin\
+            \}\
+          else\
+            \{\
+            pin_plus = 32; // Correct plus pin\
+            \
+            if (highalthold >= 604800000) // Maximum: 7 days\
+              \{\
+              highalthold = 0;\
+              \}\
+            else if (highalthold >= 172800000) // 48 hours\
+              \{\
+              highalthold = highalthold + 7200000; // Increases high altitude hold time by 2 hour\
+              \}\
+            else if (highalthold >= 86400000) // 24 hours\
+              \{\
+              highalthold = highalthold + 3600000; // Increases high altitude hold time by 1 hour\
+              \}\
+            else if (highalthold >= 43200000) // 12 hours\
+              \{\
+              highalthold = highalthold + 1800000; // Increases high altitude hold time by 30 minutes\
+              \}\
+            else if (highalthold >= 3600000) // 1 hour\
+              \{\
+              highalthold = highalthold + 900000; // Increases high altitude hold time by 15 minutes\
+              \}\
+            else if (highalthold >= 60000) // 1 minute\
+              \{\
+              highalthold = highalthold + 60000; // Increases high altitude hold time by 1 minute\
+              \}\
+            else\
+              \{\
+              highalthold = highalthold + 5000; // Increases high altitude hold time by 5 seconds\
+              \}\
+            plusbouncemillis = millis(); // Reset plus button debounce timer\
+            printmillis = plusbouncemillis; // Reset display timer\
+            \}\
+          \}\
+          \
+      if (digitalRead(pin_minus) == LOW) // Minus button is engaged\
+          \{\
+          if (millis() <= minusbouncemillis + debounce) // Before debounce time complete\
+            \{\
+            pin_minus = unused; // Minus changed to wrong pin\
+            \}\
+          else\
+            \{\
+            pin_minus = 34; // Correct minus pin\
+            if (highalthold >= 172800000) // 48 hours\
+              \{\
+              highalthold = highalthold - 7200000; // Decreases high altitude hold time by 2 hour\
+              \}\
+            else if (highalthold >= 86400000) // 24 hours\
+              \{\
+              highalthold = highalthold - 3600000; // Decreases high altitude hold time by 1 hour\
+              \}\
+            else if (highalthold > 43200000) // 12 hours\
+              \{\
+              highalthold = highalthold - 1800000; // Decreases high altitude hold time by 1 minute\
+              \}\
+            else if (highalthold > 3600000) // 1 hour\
+              \{\
+              highalthold = highalthold - 900000; // Decreases high altitude hold time by 1 minute\
+              \}\
+            else if (highalthold > 60000) // 1 minute\
+              \{\
+              highalthold = highalthold - 60000; // Decreases high altitude hold time by 1 minute\
+              \}\
+            else if (highalthold > 0 && highalthold <= 60000)\
+              \{\
+              highalthold = highalthold - 5000; // Decreases high altitude hold time by 5 seconds\
+              \}\
+            else if (highalthold == 0)\
+              \{\
+              highalthold = 604800000; // Maximum: 7 days\
+              \} \
+            minusbouncemillis = millis(); // Reset minus button debounce timer\
+            printmillis = minusbouncemillis; // Reset display timer\
+            \} \
+          \}  \
+     \}     \
+  // Menu 4: Low Altitude Hold Time\
+    if (menuscreen == 4)\
+      \{\
+        lcd.setCursor(0,0);\
+        lcd.print("Low Alt Time:                 ");\
+        lcd.setCursor(0,1);\
+      if (lowalthold != 0)\
+        \{\
+        lcd.print(lowalthold/3600000); // Hours\
+        lcd.print(":");\
+        lcd.print((lowalthold%3600000)/60000); // Minutes\
+        lcd.print(":");\
+        lcd.print((lowalthold%60000)/1000); // Seconds\
+        lcd.print("    "); \
+        \}\
+      else\
+        \{\
+        lowalthold = 0;\
+        lcd.print("Infinite");\
+        \}\
+      if (digitalRead(pin_plus) == LOW) // Plus button is engaged\
+          \{\
+          if (millis() <= plusbouncemillis + debounce) // Before debounce time complete\
+            \{\
+              pin_plus = unused; // Plus changed to unused pin\
+            \}\
+          else\
+            \{\
+            pin_plus = 32; // Correct plus pin\
+            if (lowalthold >= 604800000) // Maximum: 7 days\
+              \{\
+              lowalthold = 0;\
+              \}\
+            else if (lowalthold >= 172800000) // 48 hours\
+              \{\
+              lowalthold = lowalthold + 7200000; // Increases low altitude hold time by 2 hours\
+              \}\
+            else if (lowalthold >= 86400000) // 24 hours\
+              \{\
+              lowalthold = lowalthold + 3600000; // Increases low altitude hold time by 1 hour\
+              \}\
+            else if (lowalthold >= 43200000) // 12 hours\
+              \{\
+              lowalthold = lowalthold + 1800000; // Increases low altitude hold time by 30 minute\
+              \}\
+            else if (lowalthold >= 3600000) // 1 hour\
+              \{\
+              lowalthold = lowalthold + 900000; // Increases low altitude hold time by 15 minute\
+              \}\
+            else if (lowalthold >= 60000) // 1 minute\
+              \{\
+              lowalthold = lowalthold + 60000; // Increases low altitude hold time by 1 minute\
+              \}\
+            else\
+              \{\
+              lowalthold = lowalthold + 5000; // Increases low altitude hold time by 5 seconds\
+              \}\
+            plusbouncemillis = millis(); // Reset plus button debounce timer\
+            printmillis = plusbouncemillis; // Reset display timer\
+            \}\
+          \}\
+       if (digitalRead(pin_minus) == LOW) // Minus button is engaged\
+          \{\
+          if (millis() <= minusbouncemillis + debounce) // Before debounce time complete\
+            \{\
+            pin_minus = unused; // Minus changed to wrong pin\
+            \}\
+          else\
+            \{\
+            pin_minus = 34; // Correct minus pin\
+            if (lowalthold >= 172800000) // 48 hours\
+              \{\
+              lowalthold = lowalthold - 7200000; // Decreases low altitude hold time by 2 hours\
+              \}\
+            else if (lowalthold >= 86400000) // 24 hours\
+              \{\
+              lowalthold = lowalthold - 3600000; // Increases low altitude hold time by 1 hour\
+              \}\
+            else if (lowalthold > 43200000) // 12 hours\
+              \{\
+              lowalthold = lowalthold - 1800000; // Decreases low altitude hold time by 1 minute\
+              \}\
+            else if (lowalthold > 3600000) // 1 hour\
+              \{\
+              lowalthold = lowalthold - 900000; // Decreases low altitude hold time by 1 minute\
+              \}\
+            else if (lowalthold > 60000) // 1 minute\
+              \{\
+              lowalthold = lowalthold - 60000; // Decreases low altitude hold time by 1 minute\
+              \}\
+            else if (lowalthold > 0 && lowalthold < 600000)\
+              \{\
+              lowalthold = lowalthold - 5000; // Decreases low altitude hold time by 5 seconds\
+              \}\
+            else if (lowalthold == 0)\
+              \{\
+              lowalthold = 604800000; // Maximum: 7 days\
+              \} \
+            minusbouncemillis = millis(); // Reset minus button debounce timer\
+            printmillis = minusbouncemillis; // Reset display timer\
+            \} \
+          \}  \
+     \}\
+  if (millis() - printmillis >= screenhold) // Screen hold time has passed\
+    \{\
+    pressurealtreading = pressurealt;\
+    if (menuscreen == 0) // Menu is closed\
+      \{\
+      if (readingscreen == 3)\
+        \{\
+        readingscreen = 1; // Last reading screen cycles back to first screen\
+        \}\
+      else\
+        \{\
+        readingscreen++; // Goes to next reading screen\
+        \}\
+      \}\
+    else // Menu is open\
+      \{\
+      menuscreen = 0; // Exit menu\
+      readingscreen = 1; // First reading screen\
+      \}\
+  \
+    printmillis = millis(); // Reset display timer\
+    \}\
+  \}\
+ \}\
+\
+\}\
+}
